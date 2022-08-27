@@ -5,13 +5,16 @@ import TokenOverview from "./Token-overview";
 const Summary = (props) => {
   return (
     <OverviewSection>
+      {props.x}
       <TokenOverview
-        price={`$200`}
-        marketCap={`$ 3000M`}
+        price={`$ ${props.tokenOverview.tokenUSDPrice === undefined ? 0 : props.tokenOverview.tokenUSDPrice}`}
+        marketCap={`$ ${props.tokenOverview.marketCap === undefined ? 0 : props.tokenOverview.marketCap}`}
         totalSupply={props?.totalSupply}
         symbol={props.token?.attributes?.symbol}
+        ownerTokenInUSD={`$ ${props?.owner?.tokenInUSD === undefined ? 0 : props?.owner?.tokenInUSD}`}
+        ownerTokenAmount={props?.owner?.ownerTokenAmount}
         title="Token Overview"
-        holders={`$300,000M`}
+        holders={`$ ${props.tokenOverview.holderCap === undefined ? 0 : props.tokenOverview.holderCap}`}
       />
       <ProfileSummary
         contract={props.token?.attributes?.address}

@@ -1,4 +1,5 @@
 import TokenFactory from "./TokenFactory.json"
+import TokenPriceConsumer from "./TokenPriceConsumer.json"
 import ERC20 from "./ERC20.json"
 import ERC20_MINT_JSON from "./ERC20Mintable.json"
 import ERC20_PAUSABLE_JSON from "./ERC20Pausable.json"
@@ -7,6 +8,7 @@ import ERC20_MINT_BURN_PAUSE_JSON from "./ERC20MintBurnPause.json"
 import ERC20_AIRDROP_JSON from "./ERC20AirDrop.json"
 
 export const tokenFactoryABI = TokenFactory.abi;
+export const tokenPriceConsumerABI = TokenPriceConsumer.abi;
 export const ERC20_ABI = ERC20.abi;
 export const ERC20_MINT_ABI = ERC20_MINT_JSON.abi;
 export const ERC20_PAUSABLE_ABI = ERC20_PAUSABLE_JSON.abi;

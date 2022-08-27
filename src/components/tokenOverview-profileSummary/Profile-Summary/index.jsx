@@ -9,7 +9,6 @@ const ProfileSummary = ({ title, contract, website, socialProfiles, support }) =
       <div className="profile-details">
         <p className="bold-medium">Contract: {contract}</p>
         <p className="bold-medium">Official Website: {website}</p>
-        <p className="bold-medium">Social Profiles: {socialProfiles}</p>
         <p className="bold-medium">Support: {support}</p>
       </div>
     </ProfileSummaryWrapper>
