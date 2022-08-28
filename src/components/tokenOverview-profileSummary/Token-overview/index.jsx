@@ -15,7 +15,7 @@ const TokenOverview = ({ title, price, marketCap, totalSupply, holders, symbol, 
         <p className="bold-medium">Price: {price}</p>
         <p className="bold-medium">Market cap: {marketCap}</p>
         <p className="bold-medium">Total Supply: {fromWei(totalSupply)} {symbol}</p>
-        <p className="bold-medium">Holders: {holders}</p>
+        {/* <p className="bold-medium">Holders: {holders}</p> */}
         <p className="bold-medium">Owner:  {ownerTokenInUSD} - {fromWei(ownerTokenAmount)} {symbol}</p>
       </div>
     </TokenOverViewWrapper>
