@@ -1,4 +1,5 @@
 import TokenFactory from "./TokenFactory.json"
+import TokenPriceConsumer from "./TokenPriceConsumer.json"
 import ERC20 from "./ERC20.json"
 import ERC20_MINT_JSON from "./ERC20Mintable.json"
 import ERC20_PAUSABLE_JSON from "./ERC20Pausable.json"
@@ -7,6 +8,7 @@ import ERC20_MINT_BURN_PAUSE_JSON from "./ERC20MintBurnPause.json"
 import ERC20_AIRDROP_JSON from "./ERC20AirDrop.json"
 
 export const tokenFactoryABI = TokenFactory.abi;
+export const tokenPriceConsumerABI = TokenPriceConsumer.abi;
 export const ERC20_ABI = ERC20.abi;
 export const ERC20_MINT_ABI = ERC20_MINT_JSON.abi;
 export const ERC20_PAUSABLE_ABI = ERC20_PAUSABLE_JSON.abi;
@@ -30,7 +32,8 @@ export const ERC20_AIRDROP_ABI = ERC20_AIRDROP_JSON.abi;
 // export const ERC20_SNAPSHOTS = "0x3863be412f3B44312E7A0b55298E56ac54aDEfeC";
 
 //Kovan Network
-export const tokenFactoryAddress = "0x42da1D68EF9889E9AC71Ad323797B6F046588b4b";
+//export const tokenFactoryAddress = "0x42da1D68EF9889E9AC71Ad323797B6F046588b4b";
+export const tokenFactoryAddress = "0xa8B65646585eEb9f6501bD5d01b1294973DA3666"; //that record users addresses
 export const ERC20_ADDRESS = "0xFBFCdc423b57d9Ec13A9937b764d7A7f9D5D8EE8";
 export const ERC20_MINT = "0x43105B041E6061A592A9763Af56447a51709932A" ;
 export const ERC20_BURN = "0x294eb269DD01e2700dB044F9fA9bF86dBf71aB45";

@@ -6,8 +6,10 @@ import Button from '../../components/ButtonComponent/Button'
 import ReactTooltip from 'react-tooltip'
 import { ERC20_ABI, ERC20_MINT_ABI, ERC20_PAUSABLE_ABI, ERC20_BURNABLE_ABI, ERC20_AIRDROP_ABI} from "../../abis/constants"
 import { useMoralis } from "react-moralis";
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ethers} from "ethers";
+import IUniswapV2Router02 from "@uniswap/v2-periphery/build/IUniswapV2Router02.json";
+import IUniswapV2Factory from "@uniswap/v2-core/build/IUniswapV2Factory.json";
 import { isBurnable, isMint, isPausable, isSnaphots, isAirdrop} from '../../pages/token-generator/token-generator';
 import { toast } from "react-toastify";
 import {createMerkleRoot} from "./utils/merkleTreeUtils";
@@ -16,8 +18,19 @@ const TokenManagerScripts = (props) => {
   const {user, Moralis} = useMoralis();
   const toWei = (num) => ethers.utils.parseEther(num.toString())
   const fromWei = (num) => ethers.utils.formatEther(num)
-
+  const toUSDC = (num) =>  (num * (10 ** (6))).toString()
   const [isLoading, setIsLoading] = useState(false)
+
+  // Inject Liquidity properties
+  const [liquidityProps, setLiquidityProps] = useState({
+    tokenAmount: "", 
+    USDCAmount: "", 
+  })
+
+  const [liquidityPrices, setLiquidityPrices] = useState({
+    TokenPerUSDCPrice: "",
+    USDCPerTokenPrice: ""
+  })
 
   // BalanceOf properties
   const [balanceOf, setBalanceOf] = useState({
@@ -72,6 +85,38 @@ const TokenManagerScripts = (props) => {
     addresses: ""
   })
 
+  const onInjectLiquidityChangeHandler = (e) => {
+    const { name, value } = e.target
+    setLiquidityProps({ ...liquidityProps, [name]: value })
+  }
+
+ function shouldCalculate() {
+  return props.token?.attributes?.address && 
+          liquidityProps.USDCAmount !== "" && 
+          liquidityProps.tokenAmount !== "";
+ }
+
+  useEffect(() => {
+    if(shouldCalculate()){
+      const USDC = toWei(liquidityProps.USDCAmount); 
+      const token = toWei(liquidityProps.tokenAmount);
+      const tokenPerUSDCPrice = token/USDC;
+      const USDCPerTokenPrice = USDC/token;
+      let lqPrices = {
+        TokenPerUSDCPrice: tokenPerUSDCPrice, 
+        USDCPerTokenPrice: USDCPerTokenPrice
+      }
+      setLiquidityPrices(lqPrices)
+    }else{
+      let lqPrices = {
+        TokenPerUSDCPrice: "", 
+        USDCPerTokenPrice: ""
+      }
+      setLiquidityPrices(lqPrices)
+
+    }
+  }, [liquidityProps])
+
   const onTransferFromChangeHandler = (e) => {
     const { name, value } = e.target
     setTransferFrom({ ...transferFrom, [name]: value })
@@ -124,6 +169,82 @@ const TokenManagerScripts = (props) => {
 
   const submit = async () => {
     alert("Not implemented");
+  }
+
+  const supply = async () => {
+    //TODO: move to an environment file - based on the network 
+     const USDCAddress = '0xb7a4F3E9097C08dA09517b5aB877F7a917224ede';
+     const uniswapV2Router02Address = '0x7a250d5630b4cf539739df2c5dacb4c659f2488d';
+     const uniswapV2FactoryAddress = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
+     const tokenAddress = props.token?.attributes?.address;
+     setIsLoading(true)
+     console.log(liquidityProps);
+     await Moralis.enableWeb3();
+     //check for allowance for USDC
+     const amountUSDCAllowed = await checkAllowanceAmount(USDCAddress, user?.get("ethAddress"), uniswapV2Router02Address);
+     if(amountUSDCAllowed < liquidityProps.USDCAmount){
+       // need to give allowance
+       const transaction = await approveToken(USDCAddress, uniswapV2Router02Address, toUSDC(liquidityProps.USDCAmount));
+       console.log(`Transaction Hash: ${transaction.hash}`)
+       const result = await transaction.wait();
+       console.log(result)
+     }
+     //check for allowance for TOKEN
+     const tokenAllowed = await checkAllowanceAmount(tokenAddress, user?.get("ethAddress"), uniswapV2Router02Address);
+     if(tokenAllowed < liquidityProps.tokenAmount){
+       // need to give allowance
+       const transaction = await approveToken(tokenAddress, uniswapV2Router02Address, toWei(liquidityProps.tokenAmount));
+       console.log(`Transaction Hash: ${transaction.hash}`)
+       const result = await transaction.wait();
+       console.log(result)
+     }
+     console.log("adding liquidity... uniswap v2")
+     const date = new Date();
+     date.setMinutes(date.getMinutes() + 30); 
+     console.log(`with parameters: Token_0: ${tokenAddress},  Token_1: ${USDCAddress}, Amount_0: ${toWei(liquidityProps.tokenAmount)}, Amount_1: ${toUSDC(liquidityProps.USDCAmount)}, To: ${uniswapV2Router02Address},  deadline: ${date.getTime()}`)  
+     let sendOptions = {
+       contractAddress: uniswapV2Router02Address,
+       functionName: "addLiquidity",
+       abi: IUniswapV2Router02.abi,
+       params: {
+         from: user?.get("ethAddress"),
+         tokenA: tokenAddress,
+         tokenB: USDCAddress,
+          amountADesired: toWei(liquidityProps.tokenAmount),
+          amountBDesired: toUSDC(liquidityProps.USDCAmount),
+          amountAMin: toWei(liquidityProps.tokenAmount),
+          amountBMin: toUSDC(liquidityProps.USDCAmount),
+         to:  user?.get("ethAddress"),
+         deadline: date.getTime()
+       },
+     };
+     const transaction = await Moralis.executeFunction(sendOptions)
+     .catch(
+       (error) => {
+         toast.error(error.message);
+         setIsLoading(false);
+       }
+     );
+    console.log(`Transaction Hash: ${transaction.hash}`)
+    const result = await transaction.wait();
+    console.log(result);
+    sendOptions = {
+      contractAddress: uniswapV2FactoryAddress,
+      functionName: "getPair",
+      abi: IUniswapV2Factory.abi,
+      params: {
+        from: user?.get("ethAddress"),
+        tokenA: tokenAddress,
+        tokenB: USDCAddress
+      }
+    }
+    const pairAddress = await Moralis.executeFunction(sendOptions)
+    const token = props.token;
+    token.set("pairAddress", pairAddress)
+    token.save()
+    await props.tokenPriceInUSD();
+    toast.success("Injected liquidity successfully");
+    setIsLoading(false);
   }
 
   const sendBalanceOf = async () => {
@@ -212,24 +333,8 @@ const TokenManagerScripts = (props) => {
     setIsLoading(true)
     setAllowance({ ...allowance, ["amount"]: "" })
     console.log(allowance)
-    await Moralis.enableWeb3();
-    const sendOptions = {
-      contractAddress: props.token?.attributes?.address,
-      functionName: "allowance",
-      abi: ERC20_ABI,
-      params: {
-        from: user?.get("ethAddress"),
-        owner: allowance.ownerAddress,
-        spender: allowance.spenderAddress
-      },
-    }
-    const amount = await Moralis.executeFunction(sendOptions)
-    .catch(
-      (error) => {
-        toast.error(error.message)
-        setIsLoading(false)
-      },
-    );
+    tokenAddressToCheck = props.token?.attributes?.address;
+    const amount = await checkAllowanceAmount(tokenAddressToCheck, allowance.ownerAddress, allowance.spenderAddress);
     let newAllowance = {
       ownerAddress: allowance.ownerAddress,
       spenderAddress: allowance.spenderAddress,
@@ -361,24 +466,10 @@ const TokenManagerScripts = (props) => {
   const sendApprove = async () => {
     setIsLoading(true)
     console.log(approve)
-    await Moralis.enableWeb3();
-    const sendOptions = {
-      contractAddress: props.token?.attributes?.address,
-      functionName: "approve",
-      abi: ERC20_ABI,
-      params: {
-        from: user?.get("ethAddress"),
-        spender: approve.spenderAddress,
-        amount: toWei(approve.amount)
-      },
-    }
-    const transaction = await Moralis.executeFunction(sendOptions)
-    .catch(
-      (error) => {
-        toast.error(error.message)
-        setIsLoading(false)
-      },
-    );
+    const tokenAddress = props.token?.attributes?.address;
+    const spenderAddress = approve.spenderAddress;
+    const amount = approve.amount;
+    const transaction = await approveToken(tokenAddress, spenderAddress, toWei(amount));
     console.log(`Transaction Hash: ${transaction.hash}`)
     const result = await transaction.wait();
     console.log(result)
@@ -427,7 +518,7 @@ const TokenManagerScripts = (props) => {
     props.setPausable({ ...pausable, ["isPaused"]: false })   
   }
 
-  const sentAirDrop = async () => {
+  const sendAirDrop = async () => {
     setIsLoading(true)
     console.log(airDrop)
     const addressesArray = airDrop.addresses.split(",");
@@ -458,12 +549,100 @@ const TokenManagerScripts = (props) => {
     toast.success("Air Drop created successfully");
   }
 
+  async function approveToken(tokenAddress, spenderAddress, amount) {
+    await Moralis.enableWeb3();
+    const sendOptions = {
+      contractAddress: tokenAddress,
+      functionName: "approve",
+      abi: ERC20_ABI,
+      params: {
+        from: user?.get("ethAddress"),
+        spender: spenderAddress,
+        amount: amount
+      },
+    };
+    const transaction = await Moralis.executeFunction(sendOptions)
+      .catch(
+        (error) => {
+          toast.error(error.message);
+          setIsLoading(false);
+        }
+      );
+    return transaction;
+  }
+  
+  async function checkAllowanceAmount(tokenAddress, ownerAddress, spenderAddress) {
+    await Moralis.enableWeb3();
+    const sendOptions = {
+      contractAddress: tokenAddress,
+      functionName: "allowance",
+      abi: ERC20_ABI,
+      params: {
+        from: user?.get("ethAddress"),
+        owner: ownerAddress,
+        spender: spenderAddress
+      },
+    };
+    const amount = await Moralis.executeFunction(sendOptions)
+      .catch(
+        (error) => {
+          toast.error(error.message);
+          setIsLoading(false);
+        }
+      );
+    return amount;
+  }
+
   return (
     <>
     {isLoading ? (
       <LoadingSpinner logo={logo}/>
     ) : (
+    props.token?.attributes?.address &&
     <TokenManagerForm>
+      {/* row #0 */}
+      {props.token?.attributes?.pairAddress === "" || props.token?.attributes?.pairAddress === undefined &&
+      <div className="row">
+        <div className="column">
+          <InputComponent
+            type="number"
+            label="USDCAmount"
+            labelName="Inject Liquidity"
+            toolTip="liquidity"
+            value={liquidityProps.USDCAmount}
+            onChange={onInjectLiquidityChangeHandler}
+            placeholder="Amount in USDC"
+          />
+          <ReactTooltip id="liquidity" place="top" effect="solid">
+            When you add liquidity, you will receive pool tokens represeting your position. 
+          </ReactTooltip>
+          <InputComponent
+            tokenManager={'tokenManager'}
+            type="number"
+            label="tokenAmount"
+            value={liquidityProps.tokenAmount}
+            onChange={onInjectLiquidityChangeHandler}
+            placeholder="Amount of tokens"
+          />
+          <Button
+            label={'Supply'}
+            onClick={supply}
+            classnames={[' secondary-btn snapshot']}
+          />
+        </div>
+        {shouldCalculate() && 
+        <div className="column">  
+          <br/>
+          Initial prices:
+          <div>  
+           1 {props.token?.attributes?.symbol} = {liquidityPrices.USDCPerTokenPrice} USDC
+          </div>
+          <div>
+           1 USDC = {liquidityPrices.TokenPerUSDCPrice} {props.token?.attributes?.symbol}
+          </div>
+        </div>
+        }
+      </div>}
       {/* row #1 */}
       <div className="row">
         <div className="column">
@@ -748,7 +927,7 @@ const TokenManagerScripts = (props) => {
             />
             <Button
               label={'Airdrop'}
-              onClick={sentAirDrop}
+              onClick={sendAirDrop}
               classnames={[' secondary-btn snapshot']}
             />
           </ButtonGroups>
