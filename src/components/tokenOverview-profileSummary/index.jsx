@@ -12,7 +12,7 @@ const Summary = (props) => {
         totalSupply={props?.totalSupply}
         symbol={props.token?.attributes?.symbol}
         ownerTokenInUSD={`$ ${props?.owner?.tokenInUSD === undefined ? 0 : props?.owner?.tokenInUSD}`}
-        ownerTokenAmount={props?.owner?.ownerTokenAmount}
+        ownerTokenAmount={props?.owner?.tokenAmount}
         title="Token Overview"
         holders={`$ ${props.tokenOverview.holderCap === undefined ? 0 : props.tokenOverview.holderCap}`}
       />
