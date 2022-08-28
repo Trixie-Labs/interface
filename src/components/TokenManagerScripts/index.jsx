@@ -601,7 +601,7 @@ const TokenManagerScripts = (props) => {
     props.token?.attributes?.address &&
     <TokenManagerForm>
       {/* row #0 */}
-      {props.token?.attributes?.pairAddress == "" &&
+      {props.token?.attributes?.pairAddress === "" || props.token?.attributes?.pairAddress === undefined &&
       <div className="row">
         <div className="column">
           <InputComponent
