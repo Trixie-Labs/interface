@@ -333,7 +333,7 @@ const TokenManagerScripts = (props) => {
     setIsLoading(true)
     setAllowance({ ...allowance, ["amount"]: "" })
     console.log(allowance)
-    tokenAddressToCheck = props.token?.attributes?.address;
+    const tokenAddressToCheck = props.token?.attributes?.address;
     const amount = await checkAllowanceAmount(tokenAddressToCheck, allowance.ownerAddress, allowance.spenderAddress);
     let newAllowance = {
       ownerAddress: allowance.ownerAddress,
